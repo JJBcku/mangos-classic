@@ -349,7 +349,6 @@ class Quest
         uint32 QuestCompleteScript;
         uint32 ReputationSpilloverMask;
 		
-		
         MaNGOS::unique_weak_ptr<Quest> m_weakRef;
 };
 
