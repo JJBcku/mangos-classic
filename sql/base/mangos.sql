@@ -23,7 +23,7 @@ DROP TABLE IF EXISTS `db_version`;
 CREATE TABLE `db_version` (
   `version` varchar(120) DEFAULT NULL,
   `creature_ai_version` varchar(120) DEFAULT NULL,
-  `required_z2825_01_mangos_reputation_spillover` bit(1) DEFAULT NULL
+  `required_z2826_01_mangos_spawn_group_squad` bit(1) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Used DB version notes';
 
 --
@@ -8810,7 +8810,6 @@ INSERT INTO `playercreateinfo_spell` VALUES
 (2,7,9125,'Generic'),
 (2,7,20573,'Hardiness'),
 (2,7,20574,'Axe Specialization'),
-(2,7,21563,'Command'),
 (2,7,21651,'Opening'),
 (2,7,21652,'Closing'),
 (2,7,22027,'Remove Insignia'),
