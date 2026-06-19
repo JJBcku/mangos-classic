@@ -10,6 +10,9 @@ env:
   BUILD_TYPE: RelWithDebInfo
   REPO_DIR : ${{github.workspace}}
   BUILD_DIR: ${{github.workspace}}/bin/builddir
+  BOOST_TOOLSET: "msvc"
+  BOOST_VERSION: "1.87.0"
+  BOOST_PLATFORM_VERSION: "2022"
 
 jobs:
   build:
@@ -46,15 +49,27 @@ jobs:
         run: |
           echo "ARCHIVE_FILENAME=$env:CI_REPOSITORY_NAME-${{matrix.TYPE}}-$env:CI_SHA_SHORT.zip" >> $env:GITHUB_ENV
           cmake -E make_directory ${{ env.BUILD_DIR }}
-          choco install boost-msvc-14.3
+
+      # install dependencies — install-boost provides BoostConfig.cmake, which
+      # find_package(Boost) now requires (config mode); choco's boost-msvc
+      # package is not discoverable that way.
+      - name: Install Boost
+        uses: MarkusJx/install-boost@v2.6.0
+        id: install-boost
+        with:
+          boost_version: ${{env.BOOST_VERSION}}
+          platform_version: ${{env.BOOST_PLATFORM_VERSION}}
+          toolset: ${{env.BOOST_TOOLSET}}
 
       - name: Configure
+        env:
+          BOOST_ROOT: ${{ steps.install-boost.outputs.BOOST_ROOT }}
         run: cmake ${{matrix.OPTIONAL_DEFINES}} -B ${{env.BUILD_DIR}} -S ${{env.REPO_DIR}}
 
       - name: Build
         env:
           MAKEFLAGS: "-j8"
-        run: cmake --build ${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}}
+        run: cmake --build ${{env.BUILD_DIR}} --config ${{env.BUILD_TYPE}} --parallel
 
       - name: Archive files
         run: |
@@ -62,7 +77,7 @@ jobs:
           7z a -tzip ${{env.ARCHIVE_FILENAME}} "x64_${{env.BUILD_TYPE}}"
 
       - name: Archive The Artefact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: snapshot-${{matrix.TYPE}}
           path: "${{env.BUILD_DIR}}/bin/${{env.ARCHIVE_FILENAME}}"
@@ -70,48 +85,47 @@ jobs:
   upload:
     runs-on: windows-2022
     permissions:
-      contents: write  # for marvinpinto/action-automatic-releases to generate pre-release
+      contents: write  # for softprops/action-gh-release to publish the release
     needs: build
 
     steps:
       - name: Download Artifact snapshot-default
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: snapshot-default
           path: all_snapshots
       - name: Download Artifact snapshot-with-all
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: snapshot-with-all
           path: all_snapshots
       - name: Download Artifact snapshot-with-playerbot-ahbot
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: snapshot-with-playerbot-ahbot
           path: all_snapshots
       - name: Download Artifact snapshot-with-playerbot
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: snapshot-with-playerbot
           path: all_snapshots
       - name: Download Artifact snapshot-with-ahbot
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: snapshot-with-ahbot
           path: all_snapshots
 
       - name: Get Current Date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Upload Snapshot
-        uses: "marvinpinto/action-automatic-releases@latest"
+        uses: softprops/action-gh-release@v3
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          tag_name: latest
+          name: "Development Build(${{ steps.date.outputs.date }})"
           prerelease: false
-          title: "Development Build(${{ steps.date.outputs.date }})"
-          files: all_snapshots
+          files: all_snapshots/**
 
   notify-success:
     name: Send Notification to Discord on Success
